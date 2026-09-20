@@ -7,6 +7,8 @@ refuses to create one, so the client has to handle failure.
 
 Full behaviour and API contract: [SPEC.md](SPEC.md).
 
+Live: https://markers-client-fmeovlq6fq-ew.a.run.app (API: https://markers-server-fmeovlq6fq-ew.a.run.app/docs).
+
 ## Run
 
 Docker, one command:
@@ -17,6 +19,7 @@ docker compose up --build
 ```
 
 Client: http://localhost:5173, API + Swagger: http://localhost:8000/docs.
+Markers are kept in `./data/markers.json` on the host and survive restarts.
 
 Without Docker (Python 3.14 + [uv](https://docs.astral.sh/uv/), Node 22):
 
@@ -38,7 +41,7 @@ cd client && npx tsc --noEmit && npm run build
 client/src/                      server/app/
   main.ts       boot: toolbar, map click, initial load      main.py     FastAPI app + CORS
   markers.ts    marker state + create/score/move/remove     routes.py   6 endpoints under /markers
-  popup.ts      the one open popup                          storage.py  MarkerStore, in-memory dict + lock
+  popup.ts      the one open popup                          storage.py  MarkerStore: one JSON file + lock
   scoreButtons  0..5 colored buttons                        failure.py  should_fail(): random 1/3
   importFile.ts JSON file -> POST /markers/import           models.py   Pydantic: MarkerIn, Marker, ...
   toolbar.ts    Export / Import / Clear all
@@ -56,7 +59,27 @@ client/src/                      server/app/
   `Content-Disposition`, so the download is the server's state, not the client's.
 - Import sends the whole file as one `POST /markers/import`; Pydantic validates the
   batch before anything is stored, so it is all-or-nothing. Max 1000 markers per file.
-- No database, no auth: one shared in-memory store per server process.
+- No database, no auth. `MarkerStore` reads and rewrites one JSON file
+  (`MARKERS_FILE`) under a lock on every operation; in Docker it is a volume, on
+  Cloud Run a mounted GCS bucket. One shared collection for everyone.
+
+## Deploy
+
+Push to `main` → the `deploy` job in [`ci.yml`](.github/workflows/ci.yml) runs after
+lint and tests and ships both services to Cloud Run (`europe-west1`):
+
+- `markers-server` is built by Cloud Build from `server/`, with a GCS bucket mounted
+  at `/data` for the markers file and `--max-instances 1`, because one file cannot
+  be shared by several writers.
+- `markers-client` is built in the workflow (`docker build --build-arg` with the
+  Mapbox token and the server URL, both baked into the bundle), pushed to Artifact
+  Registry and deployed from that image. The last step puts the client URL into the
+  server's `ALLOWED_ORIGINS`.
+- Auth is Workload Identity Federation scoped to this repository, no JSON keys.
+  GitHub secrets: `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT`,
+  `VITE_MAPBOX_TOKEN`.
+
+Everything runs inside the always-free tier; idle services scale to zero.
 
 ## Manual test plan
 
@@ -74,14 +97,20 @@ client/src/                      server/app/
    Import a broken file → toast, nothing added. Import `{"markers": []}` → grey toast.
 8. Clear all → map and panel empty.
 9. Stop the server → any action shows "Network error: server is unreachable".
+   Start it again → the markers are back (they live in `data/markers.json`).
 10. Open http://127.0.0.1:5173 instead of localhost → still works (CORS allows both).
 
 ## Known limitations
 
-- **Ghost markers after a server restart.** The store is in memory, so restarting
-  the server empties it while open pages still show markers; edits on them return
-  `404` and a toast until the page is reloaded. Handling `404` by removing the marker
+- **Ghost markers.** If a marker is removed elsewhere (another tab, `Clear all`, the
+  file edited by hand) an open page still shows it; edits on it return `404` and a
+  toast until the page is reloaded. Handling `404` by removing the marker
   client-side was considered and skipped as out of scope.
+- **One writer.** Every request reads and rewrites the whole file, so the server is
+  pinned to one instance (`--max-instances 1`); a second instance would overwrite
+  the file. Fine for a demo, a real deployment needs a database.
+- **Cold starts.** The server scales to zero when idle; the first request after a
+  pause takes a couple of seconds.
 - **Export bypasses the toast system.** It is a browser navigation; if the server is
   down the browser shows its own error page.
 - **DOM markers.** Each marker is a DOM element (`mapboxgl.Marker`), fine up to a few
