@@ -70,11 +70,9 @@ class MarkerStore:
         return {m.id: m for m in markers}
 
     def _write(self, markers: dict[str, Marker]) -> None:
-        """Write the whole file atomically via a temp file."""
+        """Write the whole file."""
         payload = MarkersOut(markers=list(markers.values())).model_dump()
-        tmp = self._path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(payload))
-        tmp.replace(self._path)
+        self._path.write_text(json.dumps(payload))
 
 
 store = MarkerStore(Path(os.getenv("MARKERS_FILE", "data/markers.json")))
