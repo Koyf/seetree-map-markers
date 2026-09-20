@@ -78,6 +78,9 @@ lint and tests and ships both services to Cloud Run (`europe-west1`):
 - Auth is Workload Identity Federation scoped to this repository, no JSON keys.
   GitHub secrets: `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT`,
   `VITE_MAPBOX_TOKEN`.
+- Least privilege: the deployer service account can deploy to Cloud Run and write to
+  the two buckets it needs, nothing project-wide; the server runs as its own service
+  account that can only read and write the markers bucket.
 
 Everything runs inside the always-free tier; idle services scale to zero.
 
