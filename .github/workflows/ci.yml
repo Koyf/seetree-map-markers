@@ -84,6 +84,7 @@ jobs:
         run: |
           gcloud run deploy markers-client --quiet --region "$GCP_REGION" \
             --image "$GCP_REGION-docker.pkg.dev/$GCP_PROJECT/markers/client:${{ github.sha }}" \
+            --service-account "markers-client@$GCP_PROJECT.iam.gserviceaccount.com" \
             --allow-unauthenticated --max-instances 1 --port 80
           echo "url=$(gcloud run services describe markers-client --region "$GCP_REGION" --format 'value(status.url)')" >> "$GITHUB_OUTPUT"
 
