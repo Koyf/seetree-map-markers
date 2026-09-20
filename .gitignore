@@ -1,0 +1,26 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# node / vite
+node_modules/
+dist/
+*.local
+
+# editors / os
+.vscode/
+.idea/
+.DS_Store
+.playwright-mcp/
+
+# task statement with the personal Mapbox token; working notes
+js_task_eng.pdf
+CLAUDE.md

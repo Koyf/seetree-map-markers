@@ -1,0 +1,19 @@
+services:
+  server:
+    build: ./server
+    ports:
+      - "8000:8000"
+    environment:
+      ALLOWED_ORIGINS: http://localhost:5173
+
+  client:
+    build:
+      context: ./client
+      args:
+        # Read from .env in the repo root (docker compose loads it automatically).
+        VITE_MAPBOX_TOKEN: ${VITE_MAPBOX_TOKEN:?set VITE_MAPBOX_TOKEN in .env (see .env.example)}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    ports:
+      - "5173:80"
+    depends_on:
+      - server
