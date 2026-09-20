@@ -5,6 +5,9 @@ services:
       - "8000:8000"
     environment:
       ALLOWED_ORIGINS: http://localhost:5173
+      MARKERS_FILE: /data/markers.json
+    volumes:
+      - ./data:/data
 
   client:
     build:
