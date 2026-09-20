@@ -72,7 +72,7 @@ function bindMarkerEvents(entry: Entry): void {
   entry.view.on('dragend', () => void moveMarker(entry))
 }
 
-export function removeAllMarkers(): void {
+function removeAllMarkers(): void {
   for (const entry of entries.values()) entry.view.remove()
   entries.clear()
   closePopup()
@@ -138,6 +138,24 @@ function removeMarker(entry: Entry): Promise<void> {
 async function createMarker(lngLat: mapboxgl.LngLat, score: Score): Promise<void> {
   try {
     addMarker(await api.create({ lng: lngLat.lng, lat: lngLat.lat, score }))
+  } catch (err) {
+    showError(err)
+  }
+}
+
+export async function loadMarkers(): Promise<void> {
+  try {
+    const markers = await api.list()
+    markers.forEach(addMarker)
+  } catch (err) {
+    showError(err)
+  }
+}
+
+export async function clearMarkers(): Promise<void> {
+  try {
+    await api.clear()
+    removeAllMarkers()
   } catch (err) {
     showError(err)
   }
