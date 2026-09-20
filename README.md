@@ -68,13 +68,12 @@ client/src/                      server/app/
 Push to `main` → the `deploy` job in [`ci.yml`](.github/workflows/ci.yml) runs after
 lint and tests and ships both services to Cloud Run (`europe-west1`):
 
-- `markers-server` is built by Cloud Build from `server/`, with a GCS bucket mounted
-  at `/data` for the markers file and `--max-instances 1`, because one file cannot
-  be shared by several writers.
-- `markers-client` is built in the workflow (`docker build --build-arg` with the
-  Mapbox token and the server URL, both baked into the bundle), pushed to Artifact
-  Registry and deployed from that image. The last step puts the client URL into the
-  server's `ALLOWED_ORIGINS`.
+- Both images are built in the workflow with `docker build`, pushed to Artifact
+  Registry tagged with the commit SHA, and deployed from there. The client build
+  gets the Mapbox token and the server URL as build args, both baked into the bundle.
+- `markers-server` mounts a GCS bucket at `/data` for the markers file and runs with
+  `--max-instances 1`, because one file cannot be shared by several writers.
+  The last step puts the client URL into the server's `ALLOWED_ORIGINS`.
 - Auth is Workload Identity Federation scoped to this repository, no JSON keys.
   GitHub secrets: `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT`,
   `VITE_MAPBOX_TOKEN`.

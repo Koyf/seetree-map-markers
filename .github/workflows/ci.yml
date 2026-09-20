@@ -57,12 +57,21 @@ jobs:
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v2
 
+      - name: Build and push server image
+        run: |
+          gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
+          docker build server -t "$IMAGE"
+          docker push "$IMAGE"
+        env:
+          IMAGE: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/markers/server:${{ github.sha }}
+
       - name: Deploy server
         id: server
         run: |
-          gcloud run deploy markers-server --source server --quiet \
-            --region "$GCP_REGION" --allow-unauthenticated --max-instances 1 --port 8000 \
+          gcloud run deploy markers-server --quiet --region "$GCP_REGION" \
+            --image "$GCP_REGION-docker.pkg.dev/$GCP_PROJECT/markers/server:${{ github.sha }}" \
             --service-account "markers-server@$GCP_PROJECT.iam.gserviceaccount.com" \
+            --allow-unauthenticated --max-instances 1 --port 8000 \
             --update-env-vars "MARKERS_FILE=/data/markers.json" \
             --add-volume name=data,type=cloud-storage,bucket=seetree-map-markers-data \
             --add-volume-mount volume=data,mount-path=/data
@@ -70,7 +79,6 @@ jobs:
 
       - name: Build and push client image
         run: |
-          gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
           docker build client -t "$IMAGE" \
             --build-arg "VITE_MAPBOX_TOKEN=$VITE_MAPBOX_TOKEN" \
             --build-arg "VITE_API_URL=${{ steps.server.outputs.url }}"
