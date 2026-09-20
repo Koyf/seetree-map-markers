@@ -52,7 +52,7 @@ def delete_marker(marker_id: str) -> None:
 @router.post("/import", response_model=MarkersOut, status_code=status.HTTP_201_CREATED)
 def import_markers(data: MarkersImport) -> MarkersOut:
     """Import a list of markers."""
-    return MarkersOut(markers=[store.add(item) for item in data.markers])
+    return MarkersOut(markers=store.add_many(data.markers))
 
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)

@@ -2,15 +2,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.storage import store
+from app.storage import MarkerStore
 
 
 @pytest.fixture(autouse=True)
-def clean_store():
-    """Clear the store before and after each test."""
-    store.clear()
-    yield
-    store.clear()
+def fresh_store(monkeypatch, tmp_path):
+    """Point the routes at an empty store in a temporary file."""
+    monkeypatch.setattr("app.routes.store", MarkerStore(tmp_path / "markers.json"))
 
 
 @pytest.fixture
